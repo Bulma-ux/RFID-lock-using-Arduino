@@ -1,0 +1,149 @@
+#include <RFID.h>
+#include <SPI.h>
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+
+#define SS_PIN 9
+#define RST_PIN 8
+#define Relay_PIN 5
+#define Red_LED 6
+#define Green_LED 7
+#define Buzzer 4
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+RFID rfid(SS_PIN, RST_PIN );
+int My_RFID_Tag[5] = {0xD0, 0xCF, 0x92, 0xA1, 0x2C};
+
+boolean My_Card = false;
+
+void setup()
+{
+  pinMode(Red_LED, OUTPUT);
+  pinMode(Green_LED, OUTPUT);
+  pinMode(Buzzer, OUTPUT);
+  pinMode(Relay_PIN, OUTPUT);
+  Serial.begin(9600);
+  SPI.begin();
+  rfid.init();
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(2, 0);
+  lcd.print("Sistem Aktif");
+  lcd.setCursor(3, 1);
+  lcd.print("Sera Bilisim");
+  delay(2000);
+  lcd.clear();
+  lcd.setCursor(1, 0);
+  lcd.print("Lutfen Kartinizi");
+  lcd.setCursor(5, 1);
+  lcd.print("Okutun");
+}
+
+void loop()
+{
+  My_Card = true;
+  if ( rfid.isCard() )
+  {
+    if ( rfid.readCardSerial() )
+    {
+      lcd.clear();
+      lcd.print("UNIQUE ID is: - ");
+      delay(500);
+      lcd.setCursor(0, 1);
+
+      for ( int i = 0; i < 5; i++ )
+      {
+        Serial.print(rfid.serNum[i], HEX);
+        Serial.print(" ");
+        lcd.print(rfid.serNum[i], HEX);
+        lcd.print(" ");
+      }
+      delay(500);
+
+      for (int i = 0; i < 5; i++)
+      {
+        if ( My_RFID_Tag[i] != rfid.serNum[i] )
+        {
+          My_Card = false;
+          break;
+        }
+      }
+      Serial.println();
+      delay(1000);
+
+      if (My_Card)
+      {
+        Serial.println("\nMerhaba");
+        lcd.clear();
+        lcd.setCursor(2, 0);
+        lcd.print("Hosgeldiniz");
+        lcd.setCursor(4, 1);
+        lcd.print("Sera!");
+        delay(2000);
+        digitalWrite(Green_LED, HIGH);
+        digitalWrite(Buzzer, HIGH);
+        digitalWrite(Relay_PIN, HIGH);
+        delay(1000);
+        digitalWrite(Buzzer, LOW);
+        lcd.clear();
+        lcd.print("Kapi Acildi");
+        lcd.setCursor(0, 1);
+        lcd.print("!");
+        delay(2000);
+        lcd.clear();
+
+        for (int i = 10; i > 0; i--)
+        {
+          lcd.print("Kapi Kapatiliyor");
+          lcd.setCursor(0, 1);
+          lcd.print("Kalan ");
+          lcd.print(i);
+          lcd.print(" Zaman");
+          delay(1000);
+          lcd.clear();
+        }
+
+        digitalWrite(Green_LED, LOW);
+        digitalWrite(Relay_PIN, LOW);
+        delay(200);
+
+        lcd.clear();
+        lcd.print("Kapi Kilitlendi");
+        lcd.setCursor(0, 1);
+        lcd.print("!");
+        delay(2000);
+        lcd.clear();
+        lcd.setCursor(1, 0);
+        lcd.print("Lutfen Kartinizi");
+        lcd.setCursor(5, 1);
+        lcd.print("Okutun");
+      }
+      else
+      {
+        Serial.println("\n izin verilmedi !");
+        lcd.clear();
+        lcd.print("Tanimsiz Kart!");
+        lcd.setCursor(0, 1);
+        lcd.print("izinsiz Giris!");
+
+        for (int i = 0; i < 7; i++)
+        {
+          digitalWrite(Buzzer, HIGH);
+          digitalWrite(Red_LED, HIGH);
+          delay(500);
+          digitalWrite(Buzzer, LOW);
+          digitalWrite(Red_LED, LOW);
+          delay(500);
+        }
+        lcd.clear();
+        lcd.setCursor(1, 0);
+        lcd.print("Lutfen Kartinizi");
+        lcd.setCursor(5, 1);
+        lcd.print("Okutun");
+        delay(1000);
+      }
+    }
+  }
+  delay(1000);
+  // rfid.halt();
+}
